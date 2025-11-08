@@ -285,8 +285,8 @@
             }
         }
 
-        function drawBranch(branch) {
-            var img = activeImages.birchBark;
+        function drawBranch(branch, usePrevious) {
+            var img = usePrevious ? previousImages.birchBark : activeImages.birchBark;
             if (img && img.complete) {
                 ctx.save();
                 var dx = branch.endX - branch.startX;
@@ -306,8 +306,8 @@
             }
         }
 
-        function drawBuilding(building, index) {
-            var img = activeImages.cottages[index];
+        function drawBuilding(building, index, usePrevious) {
+            var img = usePrevious ? previousImages.cottages[index] : activeImages.cottages[index];
             if (img && img.complete) {
                 drawImageWithBorder(img, building.x, building.y, building.width, building.height);
             } else {
@@ -320,9 +320,9 @@
             }
         }
 
-        function drawBackground() {
+        function drawBackground(usePrevious) {
             // Draw sky
-            var skyImg = activeImages.sky;
+            var skyImg = usePrevious ? previousImages.sky : activeImages.sky;
             if (skyImg && skyImg.complete) {
                 ctx.save();
                 ctx.globalAlpha = 0.7;
@@ -331,7 +331,7 @@
             }
             
             // Draw valley/mountains
-            var valleyImg = activeImages.valley;
+            var valleyImg = usePrevious ? previousImages.valley : activeImages.valley;
             if (valleyImg && valleyImg.complete) {
                 ctx.save();
                 ctx.globalAlpha = 0.8;
@@ -365,7 +365,38 @@
             ctx.scale(camera.zoom, camera.zoom);
             ctx.translate(-camera.x, -camera.y);
             
-            drawBackground();
+            // Draw old images fading out
+            if (isFading && fadeAlpha > 0) {
+                ctx.save();
+                ctx.globalAlpha = fadeAlpha;
+                
+                drawBackground(true);
+                
+                var barkImg = previousImages.birchBark;
+                if (barkImg && barkImg.complete) {
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowOffsetX = 5;
+                    ctx.shadowOffsetY = 5;
+                    ctx.drawImage(barkImg, tree.trunk.x - tree.trunk.width / 2, tree.trunk.y - tree.trunk.height, tree.trunk.width, tree.trunk.height);
+                    ctx.restore();
+                }
+                
+                tree.branches.forEach(function(branch) { drawBranch(branch, true); });
+                
+                for (var i = 0; i < buildings.length; i++) {
+                    drawBuilding(buildings[i], i, true);
+                }
+                
+                ctx.restore();
+            }
+            
+            // Draw new images fading in
+            ctx.save();
+            ctx.globalAlpha = isFading ? (1.0 - fadeAlpha) : 1.0;
+            
+            drawBackground(false);
             
             var barkImg = activeImages.birchBark;
             if (barkImg && barkImg.complete) {
@@ -378,15 +409,27 @@
                 ctx.restore();
             }
             
-            tree.branches.forEach(drawBranch);
+            tree.branches.forEach(function(branch) { drawBranch(branch, false); });
             
             for (var i = 0; i < buildings.length; i++) {
-                drawBuilding(buildings[i], i);
+                drawBuilding(buildings[i], i, false);
             }
+            
+            ctx.restore();
         }
 
         function animate() {
             camera.zoom += (camera.targetZoom - camera.zoom) * 0.1;
+            
+            // Handle fade transition
+            if (isFading) {
+                fadeAlpha -= 0.02; // Fade speed
+                if (fadeAlpha <= 0) {
+                    fadeAlpha = 0;
+                    isFading = false;
+                }
+            }
+            
             draw();
             requestAnimationFrame(animate);
         }
