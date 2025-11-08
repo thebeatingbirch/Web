@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Great Birch Tree Valley</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        #canvas {
+            cursor: grab;
+            display: block;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            max-width: 320px;
+            backdrop-filter: blur(10px);
+            z-index: 5;
+        }
+
+        .info-panel h1 {
+            font-size: 20px;
+            margin: 0 0 10px 0;
+            color: #2c5f2d;
+        }
+
+        .info-panel p {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            z-index: 5;
+        }
+
+        .controls button {
+            padding: 8px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .controls button:hover {
+            background: #45a049;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 16px;
+            color: #333;
+            z-index: 10;
+        }
+
+        .fade-transition {
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .fade-transition.fading {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">Loading images...</div>
+    <canvas id="canvas"></canvas>
+    
+    <div class="info-panel">
+        <h1>🌳 The Great Birch Valley</h1>
+        <p>A massive birch tree towers over the valley, its trunk and branches home to a thriving community. Images rotate every 5-10 seconds. Click and drag to explore, scroll to zoom.</p>
+    </div>
+
+    <div class="controls">
+        <button id="resetBtn">Reset View</button>
+        <span style="color: #555; font-size: 12px;">Zoom: <span id="zoomLevel">100%</span></span>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+        var tooltip = document.getElementById('tooltip');
+        var zoomLevel = document.getElementById('zoomLevel');
+        var loadingDiv = document.getElementById('loading');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Image pools - Multiple free images from Unsplash for each category
+        var imagePools = {
+            birchBark: [
+                'https://images.unsplash.com/photo-1709556062089-88a4a88ba03b?w=800&q=80',
+                'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80',
+                'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=800&q=80',
+                'https://images.unsplash.com/photo-1511497584788-876760111969?w=800&q=80',
+                'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80'
+            ],
+            valley: [
+                'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80',
+                'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80',
+                'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1600&q=80',
+                'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1600&q=80',
+                'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1600&q=80'
+            ],
+            sky: [
+                'https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=1600&q=80',
+                'https://images.unsplash.com/photo-1517685352821-92cf88aee5a5?w=1600&q=80',
+                'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1600&q=80',
+                'https://images.unsplash.com/photo-1484766280341-87861644c80d?w=1600&q=80',
+                'https://images.unsplash.com/photo-1436891620584-47fd0e565afb?w=1600&q=80'
+            ],
+            cottages: [
+                'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=400&q=80',
+                'https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?w=400&q=80',
+                'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80',
+                'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&q=80',
+                'https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?w=400&q=80',
+                'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&q=80',
+                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&q=80',
+                'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=80',
+                'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400&q=80',
+                'https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?w=400&q=80'
+            ],
+            leaves: [
+                'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=400&q=80',
+                'https://images.unsplash.com/photo-1525498128493-380d1990a112?w=400&q=80',
+                'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?w=400&q=80',
+                'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=400&q=80',
+                'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=400&q=80'
+            ]
+        };
+
+        // Current active images
+        var activeImages = {
+            birchBark: null,
+            valley: null,
+            sky: null,
+            leaves: null,
+            cottages: []
+        };
+
+        // Image cache
+        var imageCache = {};
+
+        // Preload all images
+        var totalImagesToLoad = 0;
+        var imagesLoaded = 0;
+
+        function preloadImages() {
+            Object.keys(imagePools).forEach(function(key) {
+                imagePools[key].forEach(function(url) {
+                    totalImagesToLoad++;
+                    var img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = function() {
+                        imagesLoaded++;
+                        checkLoadingComplete();
+                    };
+                    img.onerror = function() {
+                        imagesLoaded++;
+                        checkLoadingComplete();
+                    };
+                    img.src = url;
+                    imageCache[url] = img;
+                });
+            });
+        }
+
+        function checkLoadingComplete() {
+            if (imagesLoaded >= totalImagesToLoad) {
+                loadingDiv.style.display = 'none';
+                initializeActiveImages();
+                animate();
+                startImageRotation();
+            }
+        }
+
+        function getRandomImage(pool) {
+            var randomIndex = Math.floor(Math.random() * imagePools[pool].length);
+            return imageCache[imagePools[pool][randomIndex]];
+        }
+
+        function initializeActiveImages() {
+            activeImages.birchBark = getRandomImage('birchBark');
+            activeImages.valley = getRandomImage('valley');
+            activeImages.sky = getRandomImage('sky');
+            activeImages.leaves = getRandomImage('leaves');
+            
+            // Initialize cottage images for each building
+            for (var i = 0; i < buildings.length; i++) {
+                activeImages.cottages[i] = getRandomImage('cottages');
+            }
+        }
+
+        function rotateImages() {
+            // Randomly decide which image categories to rotate
+            if (Math.random() > 0.5) {
+                activeImages.birchBark = getRandomImage('birchBark');
+            }
+            if (Math.random() > 0.5) {
+                activeImages.valley = getRandomImage('valley');
+            }
+            if (Math.random() > 0.5) {
+                activeImages.sky = getRandomImage('sky');
+            }
+            if (Math.random() > 0.5) {
+                activeImages.leaves = getRandomImage('leaves');
+            }
+            
+            // Rotate some cottage images
+            for (var i = 0; i < buildings.length; i++) {
+                if (Math.random() > 0.6) {
+                    activeImages.cottages[i] = getRandomImage('cottages');
+                }
+            }
+        }
+
+        function startImageRotation() {
+            setInterval(function() {
+                rotateImages();
+            }, Math.random() * 5000 + 5000); // Random interval between 5-10 seconds
+        }
+
+        // Camera controls
+        var camera = {
+            x: 0,
+            y: 0,
+            zoom: 1,
+            targetZoom: 1
+        };
+
+        var isDragging = false;
+        var lastMouseX = 0;
+        var lastMouseY = 0;
+
+        // Buildings and neighborhoods data
+        var buildings = [
+            { x: -150, y: 500, width: 80, height: 100, label: 'Root Village Inn', type: 'base' },
+            { x: -80, y: 520, width: 70, height: 80, label: 'Market Square', type: 'base' },
+            { x: 20, y: 510, width: 90, height: 110, label: 'Town Hall', type: 'base' },
+            { x: 100, y: 530, width: 65, height: 75, label: 'Baker Street', type: 'base' },
+            { x: -200, y: 545, width: 60, height: 70, label: 'Old Mill', type: 'base' },
+            { x: -60, y: 350, width: 70, height: 80, label: 'Midway Station', type: 'trunk' },
+            { x: 30, y: 360, width: 75, height: 85, label: 'Skyward Plaza', type: 'trunk' },
+            { x: -300, y: 150, width: 65, height: 70, label: 'Westwind Hamlet', type: 'branch' },
+            { x: -350, y: 120, width: 55, height: 60, label: 'Canopy Gardens', type: 'branch' },
+            { x: -280, y: 80, width: 60, height: 65, label: 'Leaf District', type: 'branch' },
+            { x: 250, y: 170, width: 68, height: 72, label: 'Eastbranch Heights', type: 'branch' },
+            { x: 300, y: 130, width: 58, height: 62, label: 'Sunlit Terraces', type: 'branch' },
+            { x: 280, y: 90, width: 62, height: 68, label: 'Treetop Square', type: 'branch' },
+            { x: -150, y: 50, width: 55, height: 58, label: 'Birdsong Chapel', type: 'branch' },
+            { x: 100, y: 40, width: 52, height: 56, label: 'Sky Observatory', type: 'branch' },
+            { x: 0, y: 20, width: 50, height: 55, label: 'Crown Lookout', type: 'branch' }
+        ];
+
+        // Tree structure
+        var tree = {
+            trunk: { x: 0, y: 600, width: 200, height: 500 },
+            branches: [
+                { startX: -40, startY: 250, endX: -350, endY: 150, width: 60 },
+                { startX: 40, startY: 250, endX: 320, endY: 170, width: 60 },
+                { startX: -30, startY: 180, endX: -300, endY: 80, width: 45 },
+                { startX: 30, startY: 180, endX: 300, endY: 90, width: 45 },
+                { startX: -20, startY: 120, endX: -180, endY: 40, width: 35 },
+                { startX: 20, startY: 120, endX: 130, endY: 30, width: 35 },
+                { startX: 0, startY: 80, endX: -100, endY: -20, width: 25 },
+                { startX: 0, startY: 80, endX: 100, endY: -30, width: 25 }
+            ]
+        };
+
+        function drawImageWithBorder(img, x, y, width, height, borderWidth) {
+            borderWidth = borderWidth || 3;
+            if (img && img.complete) {
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 3;
+                ctx.shadowOffsetY = 3;
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(x - borderWidth, y - borderWidth, width + borderWidth * 2, height + borderWidth * 2);
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                ctx.drawImage(img, x, y, width, height);
+                ctx.fillStyle = 'rgba(139, 69, 19, 0.1)';
+                ctx.fillRect(x, y, width, height);
+            }
+        }
+
+        function drawBranch(branch) {
+            var img = activeImages.birchBark;
+            if (img && img.complete) {
+                ctx.save();
+                var dx = branch.endX - branch.startX;
+                var dy = branch.endY - branch.startY;
+                var angle = Math.atan2(dy, dx);
+                var length = Math.sqrt(dx * dx + dy * dy);
+                ctx.translate(branch.startX, branch.startY);
+                ctx.rotate(angle);
+                ctx.drawImage(img, 0, -branch.width / 2, length, branch.width);
+                var gradient = ctx.createLinearGradient(0, -branch.width / 2, 0, branch.width / 2);
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
+                gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, -branch.width / 2, length, branch.width);
+                ctx.restore();
+            }
+        }
+
+        function drawLeaves() {
+            var img = activeImages.leaves;
+            tree.branches.forEach(function(branch) {
+                var numLeaves = 15;
+                for (var i = 0; i < numLeaves; i++) {
+                    var t = 0.5 + (i / numLeaves) * 0.5;
+                    var x = branch.startX + (branch.endX - branch.startX) * t;
+                    var y = branch.startY + (branch.endY - branch.startY) * t;
+                    var offsetX = (Math.random() - 0.5) * 80;
+                    var offsetY = (Math.random() - 0.5) * 80;
+                    var size = 30 + Math.random() * 25;
+                    ctx.save();
+                    ctx.globalAlpha = 0.7 + Math.random() * 0.3;
+                    if (img && img.complete) {
+                        ctx.drawImage(img, x + offsetX - size/2, y + offsetY - size/2, size, size);
+                    } else {
+                        ctx.fillStyle = 'rgba(' + (100 + Math.random() * 50) + ', ' + (200 + Math.random() * 55) + ', ' + (100 + Math.random() * 50) + ', 0.7)';
+                        ctx.beginPath();
+                        ctx.arc(x + offsetX, y + offsetY, size/2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            });
+        }
+
+        function drawBuilding(building, index) {
+            var img = activeImages.cottages[index];
+            if (img && img.complete) {
+                drawImageWithBorder(img, building.x, building.y, building.width, building.height);
+            } else {
+                var colors = { base: '#D2691E', trunk: '#BC8F8F', branch: '#8FBC8F' };
+                ctx.fillStyle = colors[building.type] || '#D2691E';
+                ctx.fillRect(building.x, building.y, building.width, building.height);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(building.x, building.y, building.width, building.height);
+            }
+        }
+
+        function drawBackground() {
+            // Draw sky
+            var skyImg = activeImages.sky;
+            if (skyImg && skyImg.complete) {
+                ctx.save();
+                ctx.globalAlpha = 0.7;
+                ctx.drawImage(skyImg, -1000, -500, 2000, 1000);
+                ctx.restore();
+            }
+            
+            // Draw valley/mountains
+            var valleyImg = activeImages.valley;
+            if (valleyImg && valleyImg.complete) {
+                ctx.save();
+                ctx.globalAlpha = 0.8;
+                ctx.drawImage(valleyImg, -800, 300, 1600, 800);
+                ctx.restore();
+                
+                var gradient = ctx.createLinearGradient(0, 400, 0, 900);
+                gradient.addColorStop(0, 'rgba(144, 238, 144, 0)');
+                gradient.addColorStop(1, 'rgba(144, 238, 144, 0.6)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-1000, 400, 2000, 500);
+            }
+            
+            // Ground/grass
+            ctx.fillStyle = '#90EE90';
+            ctx.fillRect(-1000, 600, 2000, 400);
+        }
+
+        function screenToWorld(x, y) {
+            return {
+                x: (x - canvas.width / 2) / camera.zoom + camera.x,
+                y: (y - canvas.height / 2) / camera.zoom + camera.y
+            };
+        }
+
+        function draw() {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(camera.zoom, camera.zoom);
+            ctx.translate(-camera.x, -camera.y);
+            
+            drawBackground();
+            
+            var barkImg = activeImages.birchBark;
+            if (barkImg && barkImg.complete) {
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                ctx.shadowBlur = 20;
+                ctx.shadowOffsetX = 5;
+                ctx.shadowOffsetY = 5;
+                ctx.drawImage(barkImg, tree.trunk.x - tree.trunk.width / 2, tree.trunk.y - tree.trunk.height, tree.trunk.width, tree.trunk.height);
+                ctx.restore();
+            }
+            
+            tree.branches.forEach(drawBranch);
+            drawLeaves();
+            
+            for (var i = 0; i < buildings.length; i++) {
+                drawBuilding(buildings[i], i);
+            }
+        }
+
+        function animate() {
+            camera.zoom += (camera.targetZoom - camera.zoom) * 0.1;
+            zoomLevel.textContent = Math.round(camera.zoom * 100) + '%';
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // Mouse controls
+        canvas.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                var dx = e.clientX - lastMouseX;
+                var dy = e.clientY - lastMouseY;
+                camera.x -= dx / camera.zoom;
+                camera.y -= dy / camera.zoom;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            } else {
+                var rect = canvas.getBoundingClientRect();
+                var worldPos = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+                var hoveredBuilding = null;
+                for (var i = 0; i < buildings.length; i++) {
+                    var building = buildings[i];
+                    if (worldPos.x >= building.x && worldPos.x <= building.x + building.width && 
+                        worldPos.y >= building.y && worldPos.y <= building.y + building.height) {
+                        hoveredBuilding = building;
+                        break;
+                    }
+                }
+                if (hoveredBuilding) {
+                    tooltip.textContent = hoveredBuilding.label;
+                    tooltip.style.left = e.clientX + 10 + 'px';
+                    tooltip.style.top = e.clientY + 10 + 'px';
+                    tooltip.classList.add('show');
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    tooltip.classList.remove('show');
+                    canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', function() { isDragging = false; });
+        canvas.addEventListener('mouseleave', function() { 
+            isDragging = false; 
+            tooltip.classList.remove('show'); 
+        });
+
+        canvas.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            var zoomSpeed = 0.001;
+            camera.targetZoom *= (1 - e.deltaY * zoomSpeed);
+            camera.targetZoom = Math.max(0.3, Math.min(3, camera.targetZoom));
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            camera.x = 0;
+            camera.y = 0;
+            camera.targetZoom = 1;
+        });
+
+        window.addEventListener('resize', function() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Start everything
+        preloadImages();
+    </script>
+</body>
+</html>
