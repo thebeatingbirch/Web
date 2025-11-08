@@ -129,6 +129,18 @@
             cottages: []
         };
 
+        // Previous images for fade transitions
+        var previousImages = {
+            birchBark: null,
+            valley: null,
+            sky: null,
+            cottages: []
+        };
+
+        // Fade animation state
+        var fadeAlpha = 1.0;
+        var isFading = false;
+
         // Image cache
         var imageCache = {};
 
@@ -182,6 +194,18 @@
         }
 
         function rotateImages() {
+            // Store previous images for fade transition
+            previousImages.birchBark = activeImages.birchBark;
+            previousImages.valley = activeImages.valley;
+            previousImages.sky = activeImages.sky;
+            for (var i = 0; i < buildings.length; i++) {
+                previousImages.cottages[i] = activeImages.cottages[i];
+            }
+
+            // Start fade transition
+            isFading = true;
+            fadeAlpha = 1.0;
+
             // Randomly decide which image categories to rotate
             if (Math.random() > 0.5) {
                 activeImages.birchBark = getRandomImage('birchBark');
@@ -257,19 +281,7 @@
         function drawImageWithBorder(img, x, y, width, height, borderWidth) {
             borderWidth = borderWidth || 3;
             if (img && img.complete) {
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                ctx.shadowBlur = 10;
-                ctx.shadowOffsetX = 3;
-                ctx.shadowOffsetY = 3;
-                ctx.fillStyle = '#8B4513';
-                ctx.fillRect(x - borderWidth, y - borderWidth, width + borderWidth * 2, height + borderWidth * 2);
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
                 ctx.drawImage(img, x, y, width, height);
-                ctx.fillStyle = 'rgba(139, 69, 19, 0.1)';
-                ctx.fillRect(x, y, width, height);
             }
         }
 
