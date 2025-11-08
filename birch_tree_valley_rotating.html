@@ -25,63 +25,6 @@
             cursor: grabbing;
         }
 
-        .info-panel {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            max-width: 320px;
-            backdrop-filter: blur(10px);
-            z-index: 5;
-        }
-
-        .info-panel h1 {
-            font-size: 20px;
-            margin: 0 0 10px 0;
-            color: #2c5f2d;
-        }
-
-        .info-panel p {
-            font-size: 14px;
-            color: #555;
-            line-height: 1.4;
-            margin: 0;
-        }
-
-        .controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 20px;
-            border-radius: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            backdrop-filter: blur(10px);
-            z-index: 5;
-        }
-
-        .controls button {
-            padding: 8px 15px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s;
-        }
-
-        .controls button:hover {
-            background: #45a049;
-        }
-
         .tooltip {
             position: absolute;
             background: rgba(0, 0, 0, 0.9);
@@ -127,23 +70,12 @@
     <div class="loading" id="loading">Loading images...</div>
     <canvas id="canvas"></canvas>
     
-    <div class="info-panel">
-        <h1>🌳 The Great Birch Valley</h1>
-        <p>A massive birch tree towers over the valley, its trunk and branches home to a thriving community. Images rotate every 5-10 seconds. Click and drag to explore, scroll to zoom.</p>
-    </div>
-
-    <div class="controls">
-        <button id="resetBtn">Reset View</button>
-        <span style="color: #555; font-size: 12px;">Zoom: <span id="zoomLevel">100%</span></span>
-    </div>
-
     <div class="tooltip" id="tooltip"></div>
 
     <script>
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
         var tooltip = document.getElementById('tooltip');
-        var zoomLevel = document.getElementById('zoomLevel');
         var loadingDiv = document.getElementById('loading');
 
         canvas.width = window.innerWidth;
@@ -278,7 +210,7 @@
         // Camera controls
         var camera = {
             x: 0,
-            y: 0,
+            y: 400,
             zoom: 1,
             targetZoom: 1
         };
@@ -443,7 +375,6 @@
 
         function animate() {
             camera.zoom += (camera.targetZoom - camera.zoom) * 0.1;
-            zoomLevel.textContent = Math.round(camera.zoom * 100) + '%';
             draw();
             requestAnimationFrame(animate);
         }
@@ -499,12 +430,6 @@
             var zoomSpeed = 0.001;
             camera.targetZoom *= (1 - e.deltaY * zoomSpeed);
             camera.targetZoom = Math.max(0.3, Math.min(3, camera.targetZoom));
-        });
-
-        document.getElementById('resetBtn').addEventListener('click', function() {
-            camera.x = 0;
-            camera.y = 0;
-            camera.targetZoom = 1;
         });
 
         window.addEventListener('resize', function() {
