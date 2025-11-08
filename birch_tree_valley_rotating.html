@@ -184,13 +184,7 @@
                 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400&q=80',
                 'https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?w=400&q=80'
             ],
-            leaves: [
-                'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=400&q=80',
-                'https://images.unsplash.com/photo-1525498128493-380d1990a112?w=400&q=80',
-                'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?w=400&q=80',
-                'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=400&q=80',
-                'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=400&q=80'
-            ]
+            leaves: []
         };
 
         // Current active images
@@ -198,7 +192,6 @@
             birchBark: null,
             valley: null,
             sky: null,
-            leaves: null,
             cottages: []
         };
 
@@ -247,7 +240,6 @@
             activeImages.birchBark = getRandomImage('birchBark');
             activeImages.valley = getRandomImage('valley');
             activeImages.sky = getRandomImage('sky');
-            activeImages.leaves = getRandomImage('leaves');
             
             // Initialize cottage images for each building
             for (var i = 0; i < buildings.length; i++) {
@@ -265,9 +257,6 @@
             }
             if (Math.random() > 0.5) {
                 activeImages.sky = getRandomImage('sky');
-            }
-            if (Math.random() > 0.5) {
-                activeImages.leaves = getRandomImage('leaves');
             }
             
             // Rotate some cottage images
@@ -371,32 +360,6 @@
             }
         }
 
-        function drawLeaves() {
-            var img = activeImages.leaves;
-            tree.branches.forEach(function(branch) {
-                var numLeaves = 15;
-                for (var i = 0; i < numLeaves; i++) {
-                    var t = 0.5 + (i / numLeaves) * 0.5;
-                    var x = branch.startX + (branch.endX - branch.startX) * t;
-                    var y = branch.startY + (branch.endY - branch.startY) * t;
-                    var offsetX = (Math.random() - 0.5) * 80;
-                    var offsetY = (Math.random() - 0.5) * 80;
-                    var size = 30 + Math.random() * 25;
-                    ctx.save();
-                    ctx.globalAlpha = 0.7 + Math.random() * 0.3;
-                    if (img && img.complete) {
-                        ctx.drawImage(img, x + offsetX - size/2, y + offsetY - size/2, size, size);
-                    } else {
-                        ctx.fillStyle = 'rgba(' + (100 + Math.random() * 50) + ', ' + (200 + Math.random() * 55) + ', ' + (100 + Math.random() * 50) + ', 0.7)';
-                        ctx.beginPath();
-                        ctx.arc(x + offsetX, y + offsetY, size/2, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                    ctx.restore();
-                }
-            });
-        }
-
         function drawBuilding(building, index) {
             var img = activeImages.cottages[index];
             if (img && img.complete) {
@@ -470,7 +433,6 @@
             }
             
             tree.branches.forEach(drawBranch);
-            drawLeaves();
             
             for (var i = 0; i < buildings.length; i++) {
                 drawBuilding(buildings[i], i);
